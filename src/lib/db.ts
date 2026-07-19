@@ -44,6 +44,15 @@ export function ensureSchema(): Promise<void> {
         data jsonb
       )`;
       await sql`create index if not exists js_events_job on js_events (job_id, id)`;
+      await sql`create table if not exists js_tasks (
+        id bigserial primary key,
+        kind text not null,
+        payload jsonb,
+        status text not null default 'queued',
+        result jsonb,
+        created_at timestamptz not null default now(),
+        updated_at timestamptz not null default now()
+      )`;
       await sql`create table if not exists js_kv (
         key text primary key,
         value jsonb not null,

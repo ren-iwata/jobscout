@@ -1,0 +1,43 @@
+# 非同期実行層: タスクキュー処理＋定期ジョブ（アーキ監査 docs/11 の欠落臓器対応）
+# トリガ: 毎時 / .worker/kick の変更push / 手動
+name: Worker
+on:
+  schedule:
+    - cron: "17 * * * *"
+  push:
+    paths: [".worker/kick"]
+  workflow_dispatch: {}
+
+concurrency:
+  group: worker
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install (runtime deps only)
+        run: npm ci --omit=dev
+      - name: Run worker
+        run: node scripts/worker/run.mjs
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Report to ci-status-worker branch
+        if: always()
+        run: |
+          mkdir -p /tmp/st && cd /tmp/st
+          git init -q -b ci-status-worker
+          cp "$GITHUB_WORKSPACE/worker_summary.json" . 2>/dev/null || echo '{}' > worker_summary.json
+          git add -A
+          git -c user.name=ci -c user.email=ci@github-actions commit -q -m "worker run ${{ github.run_number }}"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-status-worker

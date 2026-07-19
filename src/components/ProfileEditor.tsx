@@ -62,9 +62,44 @@ export default function ProfileEditor() {
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
-      <button className="af-btn-primary" disabled={busy || !text} onClick={save}>
-        保存する
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button className="af-btn-primary" disabled={busy || !text} onClick={save}>
+          保存する
+        </button>
+        <button
+          className="af-btn-ghost"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const res = await fetch("/api/tasks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  kind: "capability_scan",
+                  payload: {
+                    githubUsers: ["ren-iwata"],
+                    urls: [
+                      "https://agentfront-claude.vercel.app",
+                      "https://jobscout-nine.vercel.app",
+                      "https://loop-delta-nine.vercel.app",
+                    ],
+                  },
+                }),
+              });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error ?? "登録に失敗しました");
+              showNotice(`成果物スキャンを予約しました（${data.note}）`);
+            } catch (e) {
+              showNotice(`⚠ ${e instanceof Error ? e.message : "登録に失敗しました"}`);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          成果物からプロフィールを自動更新（バックグラウンド）
+        </button>
+      </div>
     </main>
   );
 }

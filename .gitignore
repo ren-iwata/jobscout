@@ -21,3 +21,7 @@ npm-debug.log*
 
 # ブートストラップ用の一時秘密情報（bootstrapブランチ専用・mainに置かない）
 .bootstrap/
+
+# worker local artifacts
+kv.local.json
+worker_summary.json
