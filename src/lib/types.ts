@@ -48,6 +48,7 @@ export const RISK_LABELS: Record<RiskLevel, string> = {
 
 /** 案件の追跡ステータス（人間が記録する） */
 export const JOB_STATUSES = [
+  "SCREENED",
   "ANALYZED",
   "APPLIED",
   "REPLIED",
@@ -59,6 +60,7 @@ export const JOB_STATUSES = [
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
 export const STATUS_LABELS: Record<JobStatus, string> = {
+  SCREENED: "選別済み（未精査）",
   ANALYZED: "分析済み",
   APPLIED: "応募済み",
   REPLIED: "返信あり",
@@ -149,6 +151,12 @@ export interface JobOutcome {
   notes?: string;
 }
 
+export interface ThreadMsg {
+  who: "client" | "me_draft";
+  text: string;
+  at: string;
+}
+
 export interface JobCase {
   id: string;
   createdAt: string;
@@ -156,13 +164,21 @@ export interface JobCase {
   platform: Platform;
   rawText: string; // 貼り付けられた案件文（原文保持）
   status: JobStatus;
+  quickScore?: number; // 一括取り込み時の軽量スコア(1-10)
+  screenReason?: string;
   analysis?: JobAnalysis;
   outcome: JobOutcome;
+  thread?: ThreadMsg[]; // クライアント対応（貼り付け→返信案）
+  workContract?: Record<string, unknown>; // WON時に自動生成
 }
 
 // ---- 監査ログ ----
 
 export type EventType =
+  | "bulk_ingest"
+  | "screened"
+  | "reply_drafted"
+  | "contract_generated"
   | "job_created"
   | "analyzed"
   | "reanalyzed"

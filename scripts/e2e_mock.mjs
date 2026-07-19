@@ -143,6 +143,39 @@ async function main() {
   const re = await jfetch(`/api/jobs/${id}`, { method: "POST", ...auth });
   check("reanalyze ok", re.res.ok && !!re.body?.job?.analysis?.analyzedAt);
 
+
+  // 8. 一括取り込み（分割→選別→上位フル分析）
+  console.log("[8] 一括取り込み");
+  const bulk = await jfetch("/api/jobs/bulk", {
+    method: "POST",
+    ...auth,
+    body: JSON.stringify({
+      rawText:
+        "【AI開発】社内文書検索チャットボットの構築。予算25万円。RAG希望。\n\n\nロゴデザインをお願いします。予算5000円。\n\n\n【AI自動化】ECの在庫アラートをAIで自動化したい。予算15万円。",
+    }),
+  });
+  check("bulk screened", bulk.res.ok, JSON.stringify(bulk.body).slice(0, 120));
+  check("bulk split 3", (bulk.body?.jobs?.length ?? 0) === 3, String(bulk.body?.jobs?.length));
+  const recIds = bulk.body?.recommendFullAnalysis ?? [];
+  check("bulk recommends AI jobs", recIds.length === 2, String(recIds.length));
+  const full = await jfetch(`/api/jobs/${recIds[0]}`, { method: "POST", ...auth });
+  check("screened -> analyzed", full.body?.job?.status === "ANALYZED");
+
+  // 9. 返信ドラフター
+  console.log("[9] 返信ドラフター");
+  const rep = await jfetch(`/api/jobs/${id}/reply`, {
+    method: "POST",
+    ...auth,
+    body: JSON.stringify({ clientMessage: "納期を1週間短くできますか？" }),
+  });
+  check("reply drafted", rep.res.ok && (rep.body?.draft ?? "").length > 0);
+  check("thread recorded", (rep.body?.job?.thread?.length ?? 0) === 2);
+
+  // 10. WON時の作業契約
+  console.log("[10] Work Contract");
+  const wonJob = await jfetch(`/api/jobs/${id}`, auth);
+  check("work contract on WON", !!wonJob.body?.job?.workContract, "WON済み案件に契約が無い");
+
   console.log(`\nRESULT: passed=${passed} failed=${failed}`);
   process.exit(failed === 0 ? 0 : 1);
 }

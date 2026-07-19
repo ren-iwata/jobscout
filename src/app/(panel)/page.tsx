@@ -18,11 +18,34 @@ const VERDICT_COLORS: Record<string, string> = {
   REJECT_RISK: "bg-red-100 text-red-700",
 };
 
+const VERDICT_RANK: Record<string, number> = {
+  APPLY_NOW: 0,
+  APPLY_AFTER_CLARIFICATION: 1,
+  APPLY_AS_DISCOVERY: 2,
+};
+
 export default async function Dashboard() {
   const jobs = await listJobs();
   const applied = jobs.filter((j) => j.outcome.appliedAt).length;
   const replied = jobs.filter((j) => j.outcome.replied).length;
   const won = jobs.filter((j) => j.outcome.result === "won").length;
+
+  // 「今取るべき案件」= 応募推奨判定が出ていてまだ応募していないもの（判定順→スコア順）
+  const actionable = jobs
+    .filter(
+      (j) =>
+        j.status === "ANALYZED" &&
+        j.analysis &&
+        j.analysis.verdict in VERDICT_RANK
+    )
+    .sort(
+      (a, b) =>
+        VERDICT_RANK[a.analysis!.verdict] - VERDICT_RANK[b.analysis!.verdict] ||
+        (b.quickScore ?? 0) - (a.quickScore ?? 0)
+    );
+  const screened = jobs
+    .filter((j) => j.status === "SCREENED")
+    .sort((a, b) => (b.quickScore ?? 0) - (a.quickScore ?? 0));
 
   return (
     <main>
@@ -42,10 +65,70 @@ export default async function Dashboard() {
         ))}
       </section>
 
+      {actionable.length > 0 && (
+        <section className="mb-6">
+          <h2 className="mb-2 text-sm font-bold text-green-800">
+            ▶ 今取るべき案件（{actionable.length}件）
+          </h2>
+          <ul className="space-y-2">
+            {actionable.map((j) => (
+              <li key={j.id}>
+                <Link
+                  href={`/jobs/${j.id}`}
+                  className="af-card flex items-center gap-3 border-green-200 p-4 hover:border-green-400"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">
+                      {j.analysis?.title}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-neutral-500">
+                      {j.analysis?.verdictReasoning}
+                    </p>
+                  </div>
+                  <span
+                    className={`af-chip ${VERDICT_COLORS[j.analysis!.verdict]}`}
+                  >
+                    {VERDICT_LABELS[j.analysis!.verdict]}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {screened.length > 0 && (
+        <section className="mb-6">
+          <h2 className="mb-2 text-sm font-bold text-neutral-600">
+            未精査（スコア順・タップでフル分析）
+          </h2>
+          <ul className="space-y-2">
+            {screened.map((j) => (
+              <li key={j.id}>
+                <Link
+                  href={`/jobs/${j.id}`}
+                  className="af-card flex items-center gap-3 p-3 hover:border-blue-300"
+                >
+                  <span className="af-chip bg-neutral-800 text-white">
+                    {j.quickScore ?? "—"}/10
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm">{j.rawText.slice(0, 40)}</p>
+                    <p className="truncate text-xs text-neutral-400">
+                      {j.screenReason}
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-bold">案件一覧</h1>
+        <h1 className="text-lg font-bold">全案件</h1>
         <Link href="/new" className="af-btn-primary">
-          ＋ 案件を分析する
+          ＋ 案件を取り込む
         </Link>
       </div>
 

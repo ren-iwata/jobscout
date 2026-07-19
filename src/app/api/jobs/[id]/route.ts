@@ -55,6 +55,27 @@ export async function PATCH(
     if (body.status === "APPLIED" && !job.outcome.appliedAt) {
       job.outcome.appliedAt = new Date().toISOString();
     }
+    // 採用時: 開発側（開発部）へ渡す作業契約を自動生成（agentfrontのWork Contractと同型思想）
+    if (body.status === "WON" && !job.workContract) {
+      const a = job.analysis;
+      job.workContract = {
+        source: "jobscout",
+        jobId: job.id,
+        platform: job.platform,
+        createdAt: new Date().toISOString(),
+        title: a?.title ?? job.rawText.slice(0, 40),
+        objective: a?.clientGoal ?? "",
+        deliverables: a?.deliverables ?? [],
+        requiredTech: a?.requiredTech ?? [],
+        unknownsAtContract: a?.unknowns ?? [],
+        contractAmount: body.outcome?.contractAmount ?? job.outcome.contractAmount ?? "（未記入）",
+        deadlineText: a?.deadlineText ?? "（未記入）",
+        proposalUsed: job.outcome.proposalUsed ?? a?.proposalDraft ?? "",
+        clientThread: (job.thread ?? []).slice(-20),
+        rawJobText: job.rawText,
+      };
+      await appendEvent(id, "contract_generated", "system", {});
+    }
     await appendEvent(id, "status_change", "owner", { from: prev, to: job.status });
     updated.push("status");
   }
@@ -87,9 +108,13 @@ export async function POST(
   const job = await getJob(id);
   if (!job) return NextResponse.json({ error: "not found" }, { status: 404 });
   try {
+    const first = !job.analysis;
     job.analysis = await analyzeJob(job.rawText, job.platform === "other" ? null : job.platform);
     job.platform = job.analysis.platform;
-    await appendEvent(id, "reanalyzed", "agent", { verdict: job.analysis.verdict });
+    if (job.status === "SCREENED") job.status = "ANALYZED";
+    await appendEvent(id, first ? "analyzed" : "reanalyzed", "agent", {
+      verdict: job.analysis.verdict,
+    });
     await saveJob(job);
     return NextResponse.json({ job });
   } catch (err) {

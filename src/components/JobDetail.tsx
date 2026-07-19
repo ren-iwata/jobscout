@@ -43,6 +43,7 @@ export default function JobDetail({ id }: { id: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [proposal, setProposal] = useState("");
   const [outcomeBuf, setOutcomeBuf] = useState<Record<string, string>>({});
+  const [clientMsg, setClientMsg] = useState("");
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/jobs/${id}`, { cache: "no-store" });
@@ -119,8 +120,8 @@ export default function JobDetail({ id }: { id: string }) {
               {STATUS_LABELS[job.status]}
             </p>
           </div>
-          <button className="af-btn-ghost shrink-0" disabled={busy} onClick={reanalyze}>
-            再分析
+          <button className="af-btn-primary shrink-0" disabled={busy} onClick={reanalyze}>
+            {a ? "再分析" : "フル分析する"}
           </button>
         </div>
         {a && (
@@ -320,6 +321,82 @@ export default function JobDetail({ id }: { id: string }) {
             </section>
           </div>
         </>
+      )}
+
+      {/* クライアント対応 */}
+      <section className="af-card p-5 space-y-3">
+        <h2 className="text-sm font-bold">
+          クライアント対応（先方メッセージを貼ると返信案を作ります・送信はあなた）
+        </h2>
+        {(job.thread ?? []).length > 0 && (
+          <div className="max-h-72 space-y-2 overflow-y-auto">
+            {(job.thread ?? []).map((m, i) => (
+              <div key={i} className={m.who === "client" ? "" : "pl-4"}>
+                <p className="text-xs font-bold text-neutral-500">
+                  {m.who === "client" ? "クライアント" : "返信案"}
+                </p>
+                <p className="whitespace-pre-wrap rounded-xl bg-neutral-50 p-3 text-sm">
+                  {m.text}
+                </p>
+                {m.who === "me_draft" && (
+                  <div className="mt-1">
+                    <Copyable label="この返信案をコピー" text={m.text} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <textarea
+            className="af-input min-h-12 flex-1 text-sm"
+            placeholder="クライアントからのメッセージを貼り付け"
+            value={clientMsg}
+            onChange={(e) => setClientMsg(e.target.value)}
+          />
+          <button
+            className="af-btn-primary shrink-0"
+            disabled={busy || !clientMsg.trim()}
+            onClick={async () => {
+              setBusy(true);
+              showNotice("返信案を生成中…");
+              try {
+                const res = await fetch(`/api/jobs/${id}/reply`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ clientMessage: clientMsg }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error ?? "生成に失敗しました");
+                setClientMsg("");
+                await load();
+                showNotice("返信案を作成しました（コピーして送信してください）");
+              } catch (e) {
+                showNotice(`⚠ ${e instanceof Error ? e.message : "生成に失敗しました"}`);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            返信案を作る
+          </button>
+        </div>
+      </section>
+
+      {/* 作業契約（採用時） */}
+      {job.workContract && (
+        <section className="af-card p-5">
+          <div className="mb-1 flex items-center justify-between">
+            <h2 className="text-sm font-bold">Work Contract（開発部へ渡す作業定義）</h2>
+            <Copyable
+              label="JSONをコピー"
+              text={JSON.stringify(job.workContract, null, 2)}
+            />
+          </div>
+          <pre className="max-h-72 overflow-auto rounded-xl bg-neutral-900 p-4 text-xs text-neutral-100">
+            {JSON.stringify(job.workContract, null, 2)}
+          </pre>
+        </section>
       )}
 
       {/* 応募記録 */}
