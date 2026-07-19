@@ -3,7 +3,7 @@
 name: Worker
 on:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "17 */6 * * *"
   push:
     paths: [".worker/kick"]
   workflow_dispatch: {}
