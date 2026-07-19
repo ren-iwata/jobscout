@@ -1,0 +1,115 @@
+# mainへのpushで: 退行テスト → （秘密情報が設定済みなら）インフラ整備 → Vercel本番デプロイ → 煙テスト
+# 注: Vercel Git連携が有効な場合、本番デプロイはVercel側でも自動実行される（このワークフローの
+#     デプロイ工程はGit連携が無い環境のフォールバック）。Actions secrets未設定時は退行テストのみ実行。
+name: Deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm ci
+      - name: Build (regression)
+        run: npm run build
+        env:
+          MOCK_MODE: "1"
+      - name: Mock E2E (regression)
+        run: |
+          (MOCK_MODE=1 ADMIN_PASSWORD=test-pass npx next start -p 3000 &)
+          sleep 6
+          BASE_URL=http://localhost:3000 ADMIN_PASSWORD=test-pass npm run test:e2e
+      - name: Check secrets
+        id: chk
+        run: |
+          missing=""
+          [ -z "${{ secrets.SUPABASE_TOKEN }}" ] && missing="$missing SUPABASE_TOKEN"
+          [ -z "${{ secrets.VERCEL_TOKEN }}" ] && missing="$missing VERCEL_TOKEN"
+          [ -z "${{ secrets.ANTHROPIC_API_KEY }}" ] && missing="$missing ANTHROPIC_API_KEY"
+          [ -z "${{ secrets.ADMIN_PASSWORD }}" ] && missing="$missing ADMIN_PASSWORD"
+          echo "missing:${missing:- none}" | tee secrets_presence.txt
+          if [ -z "$missing" ]; then
+            echo "have=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "have=false" >> "$GITHUB_OUTPUT"
+            echo "Secrets不足のためデプロイ工程をスキップ:${missing}"
+          fi
+      - name: Provision infra (idempotent)
+        if: steps.chk.outputs.have == 'true'
+        shell: bash
+        run: node scripts/provision.mjs 2>&1 | tee provision.log
+        env:
+          SUPABASE_TOKEN: ${{ secrets.SUPABASE_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      - name: Deploy to Vercel (production)
+        if: steps.chk.outputs.have == 'true'
+        id: deploy
+        shell: bash
+        run: |
+          DOMAIN=$(cat .vercel/prod_domain.txt)
+          echo "url=https://$DOMAIN" >> "$GITHUB_OUTPUT"
+          TOKEN=$(printf %s "$VERCEL_TOKEN" | tr -d '[:space:]')
+          # デプロイはCLIに一本化（git自動ビルドはprovisionが無効化済み）。
+          # デプロイ後にhealthのDB疎通まで確認し、未達なら1回だけ再デプロイする。
+          attempt() {
+            npx vercel@latest deploy --prod --yes --token "$TOKEN" 2>>deploy.log || return 1
+            for j in $(seq 1 18); do
+              sleep 10
+              if curl -sf "https://$DOMAIN/api/health" | grep -q '"db":"ok"'; then
+                echo "production healthy (db=ok)"; return 0
+              fi
+            done
+            return 1
+          }
+          if attempt; then exit 0; fi
+          echo "health未達→再デプロイ（1回）"
+          attempt
+          cat deploy.log || true
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Smoke test
+        if: steps.chk.outputs.have == 'true'
+        id: smoke
+        shell: bash
+        run: |
+          sleep 5
+          node scripts/smoke_prod.mjs "${{ steps.deploy.outputs.url }}" | tee smoke.log
+      - name: Summary
+        if: always()
+        run: |
+          echo "## AgentFront deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: ${{ steps.deploy.outputs.url || '(deploy skipped)' }}" >> "$GITHUB_STEP_SUMMARY"
+      # CTO（Cowork）はGitHubのUI/REST APIに届かないため、実行結果を ci-status ブランチへ
+      # 書き戻し、git fetch だけで検収できるようにする（秘密情報は書かない）
+      - name: Report status to ci-status branch
+        if: always()
+        run: |
+          mkdir -p /tmp/st && cd /tmp/st
+          git init -q -b ci-status
+          cp "$GITHUB_WORKSPACE/smoke.log" . 2>/dev/null || true
+          cp "$GITHUB_WORKSPACE/secrets_presence.txt" . 2>/dev/null || true
+          grep -v -E "add-mask|postgres://" "$GITHUB_WORKSPACE/provision.log" > provision.public.log 2>/dev/null || true
+          tail -50 "$GITHUB_WORKSPACE/deploy.log" > deploy.tail.log 2>/dev/null || true
+          cat > status.json << EOF
+          {"workflow":"deploy","run":"${{ github.run_number }}","conclusion":"${{ job.status }}","secrets_present":"${{ steps.chk.outputs.have }}","url":"${{ steps.deploy.outputs.url }}","smoke":"${{ steps.smoke.outcome }}","commit":"${{ github.sha }}"}
+          EOF
+          git add -A
+          git -c user.name=ci -c user.email=ci@github-actions commit -q -m "status: run ${{ github.run_number }}"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-status

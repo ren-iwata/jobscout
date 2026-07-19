@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+:root {
+  --af-bg: #f7f7f5;
+  --af-ink: #1c1c1e;
+}
+
+html,
+body {
+  background: var(--af-bg);
+  color: var(--af-ink);
+}
+
+.af-card {
+  @apply bg-white rounded-2xl border border-neutral-200 shadow-sm;
+}
+
+.af-btn-primary {
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed bg-blue-600 text-white hover:bg-blue-700;
+}
+
+.af-btn-ghost {
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed bg-neutral-100 text-neutral-700 hover:bg-neutral-200;
+}
+
+.af-btn-danger {
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed bg-red-50 text-red-700 hover:bg-red-100;
+}
+
+.af-input {
+  @apply w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.af-label {
+  @apply block text-xs font-semibold text-neutral-500 mb-1;
+}
+
+.af-chip {
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+}

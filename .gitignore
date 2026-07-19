@@ -1,0 +1,23 @@
+# dependencies / build
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# env / secrets
+.env
+.env.local
+.env.*.local
+
+# runtime data（案件・プロフィールデータはリポジトリに入れない）
+data/jobs/*
+data/profile.json
+!data/.gitkeep
+
+# misc
+.DS_Store
+npm-debug.log*
+
+# ブートストラップ用の一時秘密情報（bootstrapブランチ専用・mainに置かない）
+.bootstrap/
