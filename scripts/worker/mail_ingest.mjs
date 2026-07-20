@@ -38,8 +38,19 @@ export async function runMailIngest(payload) {
   await client.connect();
   const summary = { mails: 0, jobsCreated: 0, analyzed: 0, errors: [] };
   try {
-    await client.mailboxOpen(label);
-    const unseen = await client.search({ seen: false });
+    // ラベルがあればそれを読む。無ければINBOXからUpwork/CrowdWorksの通知だけを対象にする
+    let usingLabel = true;
+    try {
+      await client.mailboxOpen(label);
+    } catch {
+      usingLabel = false;
+      await client.mailboxOpen("INBOX");
+    }
+    summary.mailbox = usingLabel ? label : "INBOX(差出人フィルタ)";
+    const criteria = usingLabel
+      ? { seen: false }
+      : { seen: false, or: [{ from: "upwork" }, { from: "crowdworks" }] };
+    const unseen = await client.search(criteria);
     const targets = (unseen ?? []).slice(-maxMails);
     if (targets.length === 0) return { ...summary, note: "新着なし" };
 
