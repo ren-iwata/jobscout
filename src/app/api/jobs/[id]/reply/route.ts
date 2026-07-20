@@ -4,7 +4,7 @@ import { isAdmin } from "@/lib/auth";
 import { appendEvent, getJob, saveJob } from "@/lib/store";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300; // 長文案件の分析対策（Fluid Compute上限）
 
 /** クライアントメッセージの貼り付け→返信案生成（送信はしない） */
 export async function POST(

@@ -37,6 +37,18 @@ function Copyable({ label, text }: { label: string; text: string }) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function safeJson(res: Response): Promise<any> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      error: `サーバー応答エラー(${res.status})。分析に時間がかかり過ぎた可能性があります。もう一度お試しください`,
+    };
+  }
+}
+
 function extractJobUrl(rawText: string): string | null {
   const urls = rawText.match(/https?:\/\/[^\s"'<>\)\]]+/g) ?? [];
   return urls.find((u) => u.includes("upwork.com") || u.includes("crowdworks.jp")) ?? null;
@@ -53,7 +65,7 @@ export default function JobDetail({ id }: { id: string }) {
   const load = useCallback(async () => {
     const res = await fetch(`/api/jobs/${id}`, { cache: "no-store" });
     if (!res.ok) return;
-    const data = await res.json();
+    const data = await safeJson(res);
     setJob(data.job);
     setProposal(data.job.analysis?.proposalDraft ?? "");
   }, [id]);
@@ -75,7 +87,7 @@ export default function JobDetail({ id }: { id: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? "更新に失敗しました");
       await load();
       showNotice(okMsg);
@@ -91,7 +103,7 @@ export default function JobDetail({ id }: { id: string }) {
     showNotice("再分析中…（10〜30秒）");
     try {
       const res = await fetch(`/api/jobs/${id}`, { method: "POST" });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? "再分析に失敗しました");
       await load();
       showNotice("再分析しました");
@@ -383,7 +395,7 @@ export default function JobDetail({ id }: { id: string }) {
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ clientMessage: clientMsg }),
                 });
-                const data = await res.json();
+                const data = await safeJson(res);
                 if (!res.ok) throw new Error(data.error ?? "生成に失敗しました");
                 setClientMsg("");
                 await load();

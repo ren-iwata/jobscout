@@ -3,6 +3,18 @@
 // プロフィール編集（v0.1はJSONエディタ方式・検証付き）
 import { useEffect, useState } from "react";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function safeJson(res: Response): Promise<any> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      error: `サーバー応答エラー(${res.status})。分析に時間がかかり過ぎた可能性があります。もう一度お試しください`,
+    };
+  }
+}
+
 export default function ProfileEditor() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -34,7 +46,7 @@ export default function ProfileEditor() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile: parsed }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? "保存に失敗しました");
       setText(JSON.stringify(data.profile, null, 2));
       showNotice("保存しました。以後の分析に反映されます");
@@ -87,7 +99,7 @@ export default function ProfileEditor() {
                   },
                 }),
               });
-              const data = await res.json();
+              const data = await safeJson(res);
               if (!res.ok) throw new Error(data.error ?? "登録に失敗しました");
               showNotice(`成果物スキャンを予約しました（${data.note}）`);
             } catch (e) {

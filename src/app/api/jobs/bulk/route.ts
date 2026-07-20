@@ -5,7 +5,7 @@ import { appendEvent, newJobId, saveJob } from "@/lib/store";
 import type { JobCase } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300; // 長文案件の分析対策（Fluid Compute上限）
 
 /** 一括取り込み: 検索結果ページの貼り付け→分割→軽量スクリーニング→SCREENED案件を一括作成
  *  フル分析はここでは行わない（時間制限とコスト制御のため。クライアント側が上位から順次実行する） */

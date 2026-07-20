@@ -5,6 +5,18 @@ import { useRouter } from "next/navigation";
 
 type Mode = "bulk" | "single";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function safeJson(res: Response): Promise<any> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      error: `サーバー応答エラー(${res.status})。分析に時間がかかり過ぎた可能性があります。もう一度お試しください`,
+    };
+  }
+}
+
 export default function NewJobPage() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("bulk");
@@ -23,7 +35,7 @@ export default function NewJobPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rawText, platform: platform || undefined }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? "分析に失敗しました");
       router.push(`/jobs/${data.job.id}`);
     } catch (e) {
@@ -42,7 +54,7 @@ export default function NewJobPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rawText }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? "選別に失敗しました");
       const ids: string[] = data.recommendFullAnalysis ?? [];
       setProgress(`${data.jobs.length}件を検出。上位${ids.length}件を精査中…`);

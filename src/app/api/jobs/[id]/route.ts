@@ -6,7 +6,7 @@ import type { JobOutcome, JobStatus } from "@/lib/types";
 import { JOB_STATUSES } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300; // 長文案件の分析対策（Fluid Compute上限）
 
 export async function GET(
   _req: NextRequest,

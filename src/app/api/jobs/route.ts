@@ -6,7 +6,7 @@ import type { JobCase, Platform } from "@/lib/types";
 import { PLATFORMS } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60; // LLM分析のため延長
+export const maxDuration = 300; // 長文案件の分析対策（Fluid Compute上限）
 
 export async function GET() {
   if (!(await isAdmin())) {
