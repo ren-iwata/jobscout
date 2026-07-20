@@ -1,12 +1,4 @@
 {
-  "kind": "capability_scan",
-  "payload": {
-    "githubUsers": ["ren-iwata"],
-    "repos": ["ren-iwata/jobscout"],
-    "urls": [
-      "https://agentfront-claude.vercel.app",
-      "https://jobscout-nine.vercel.app",
-      "https://loop-delta-nine.vercel.app"
-    ]
-  }
+  "kind": "mail_ingest",
+  "payload": { "note": "Gmail接続の検証実行 2026-07-20" }
 }
