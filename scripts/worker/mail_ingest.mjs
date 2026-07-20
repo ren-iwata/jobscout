@@ -36,28 +36,34 @@ export async function runMailIngest(payload) {
     logger: false,
   });
   await client.connect();
-  const summary = { mails: 0, jobsCreated: 0, analyzed: 0, errors: [] };
+  const summary = { mails: 0, jobsCreated: 0, analyzed: 0, errors: [], mailboxes: [] };
   try {
-    // ラベルがあればそれを読む。無ければINBOXからUpwork/CrowdWorksの通知だけを対象にする
-    let usingLabel = true;
-    try {
-      await client.mailboxOpen(label);
-    } catch {
-      usingLabel = false;
-      await client.mailboxOpen("INBOX");
+    // 取りこぼし防止のため両方を読む:
+    //  1) INBOX（Upwork/CrowdWorksの差出人のみ・振り分け設定が無くても拾う）
+    //  2) ラベル（あれば。振り分け済みでINBOXをスキップした通知を拾う）
+    const passes = [
+      { box: "INBOX", criteria: { seen: false, or: [{ from: "upwork" }, { from: "crowdworks" }] } },
+      { box: label, criteria: { seen: false } },
+    ];
+    const targetsAll = [];
+    for (const p of passes) {
+      try {
+        await client.mailboxOpen(p.box);
+      } catch {
+        continue;
+      }
+      const unseen = await client.search(p.criteria);
+      const t = (unseen ?? []).slice(-maxMails);
+      summary.mailboxes.push(`${p.box}:${t.length}`);
+      for (const uid of t) targetsAll.push({ box: p.box, uid });
     }
-    summary.mailbox = usingLabel ? label : "INBOX(差出人フィルタ)";
-    const criteria = usingLabel
-      ? { seen: false }
-      : { seen: false, or: [{ from: "upwork" }, { from: "crowdworks" }] };
-    const unseen = await client.search(criteria);
-    const targets = (unseen ?? []).slice(-maxMails);
-    if (targets.length === 0) return { ...summary, note: "新着なし" };
+    if (targetsAll.length === 0) return { ...summary, note: "新着なし" };
 
     const cookie = await apiLogin();
     const auth = { Cookie: cookie, "Content-Type": "application/json" };
 
-    for (const uid of targets) {
+    for (const { box, uid } of targetsAll) {
+      await client.mailboxOpen(box);
       try {
         const msg = await client.fetchOne(uid, { source: true });
         const parsed = await simpleParser(msg.source);
