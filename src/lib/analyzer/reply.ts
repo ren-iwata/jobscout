@@ -22,6 +22,17 @@ export async function draftReply(job: JobCase, clientMessage: string): Promise<s
     .slice(-10)
     .map((m) => `${m.who === "client" ? "クライアント" : "自分(下書き)"}: ${m.text}`)
     .join("\n---\n");
+  // 文脈の組み立て: 実際に送った提案文（編集後）を優先し、確認質問・見積もり根拠も渡す
+  const a = job.analysis;
+  const proposalSent = (job.outcome.proposalUsed ?? a?.proposalDraft ?? "").slice(0, 2500);
+  const questions =
+    a?.clarifyingQuestions?.length
+      ? `\n# こちらが提示済みの確認質問（先方の返信はこれへの回答である可能性が高い。回答された項目を認識し、未回答の項目があれば自然に再確認する）\n${a.clarifyingQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")}`
+      : "";
+  const estimate =
+    a?.estimate
+      ? `\n# 見積もりの内部方針（先方に新たな金額を確約しないこと。既提示額の範囲でのみ言及可）\n${a.estimate.options.map((o) => `${o.type}: ${o.amountText}`).join(" / ")}\n根拠: ${a.estimate.basis.slice(0, 300)}`
+      : "";
   const res = await client().messages.create({
     model: MODELS.conversation,
     max_tokens: 2048,
@@ -34,7 +45,11 @@ export async function draftReply(job: JobCase, clientMessage: string): Promise<s
 ${profileForPrompt(profile)}
 
 # 案件の文脈
-${job.analysis ? `${job.analysis.title}: ${job.analysis.summary}\n提案済み内容: ${job.analysis.proposalDraft.slice(0, 800)}` : job.rawText.slice(0, 800)}
+${a ? `${a.title}: ${a.summary}` : job.rawText.slice(0, 800)}
+
+# 送付済みの提案文（先方はこれを読んで返信している）
+${proposalSent || "（未送付）"}
+${questions}${estimate}
 
 # これまでのやり取り
 ${thread || "（初回）"}`,
