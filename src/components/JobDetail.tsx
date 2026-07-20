@@ -37,6 +37,11 @@ function Copyable({ label, text }: { label: string; text: string }) {
   );
 }
 
+function extractJobUrl(rawText: string): string | null {
+  const urls = rawText.match(/https?:\/\/[^\s"'<>\)\]]+/g) ?? [];
+  return urls.find((u) => u.includes("upwork.com") || u.includes("crowdworks.jp")) ?? null;
+}
+
 export default function JobDetail({ id }: { id: string }) {
   const [job, setJob] = useState<JobCase | null>(null);
   const [busy, setBusy] = useState(false);
@@ -120,9 +125,21 @@ export default function JobDetail({ id }: { id: string }) {
               {STATUS_LABELS[job.status]}
             </p>
           </div>
-          <button className="af-btn-primary shrink-0" disabled={busy} onClick={reanalyze}>
-            {a ? "再分析" : "フル分析する"}
-          </button>
+          <div className="flex shrink-0 gap-2">
+            {extractJobUrl(job.rawText) && (
+              <a
+                href={extractJobUrl(job.rawText)!}
+                target="_blank"
+                rel="noreferrer"
+                className="af-btn-ghost"
+              >
+                案件ページを開く ↗
+              </a>
+            )}
+            <button className="af-btn-primary" disabled={busy} onClick={reanalyze}>
+              {a ? "再分析" : "フル分析する"}
+            </button>
+          </div>
         </div>
         {a && (
           <div

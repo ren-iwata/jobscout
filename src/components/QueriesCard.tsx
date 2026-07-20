@@ -10,21 +10,38 @@ interface Registry {
   updatedAt: string | null;
 }
 
-function Q({ text }: { text: string }) {
+function searchUrl(platform: "crowdworks" | "upwork", q: string): string {
+  return platform === "crowdworks"
+    ? `https://crowdworks.jp/public/jobs/search?search%5Bkeywords%5D=${encodeURIComponent(q)}`
+    : `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(q)}`;
+}
+
+function Q({ text, platform }: { text: string; platform: "crowdworks" | "upwork" }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button
-      className="af-chip bg-white border border-neutral-200 hover:border-blue-400 cursor-pointer"
-      onClick={() => {
-        navigator.clipboard.writeText(text).then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
-        });
-      }}
-      title="タップでコピー"
-    >
-      {copied ? "コピーしました ✓" : text}
-    </button>
+    <span className="inline-flex items-center gap-0.5">
+      <button
+        className="af-chip bg-white border border-neutral-200 hover:border-blue-400 cursor-pointer"
+        onClick={() => {
+          navigator.clipboard.writeText(text).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          });
+        }}
+        title="タップでコピー"
+      >
+        {copied ? "コピーしました ✓" : text}
+      </button>
+      <a
+        href={searchUrl(platform, text)}
+        target="_blank"
+        rel="noreferrer"
+        className="af-chip bg-blue-50 text-blue-700 hover:bg-blue-100"
+        title="この検索を開く"
+      >
+        ↗
+      </a>
+    </span>
   );
 }
 
@@ -50,7 +67,7 @@ export default function QueriesCard() {
           <span className="af-label">クラウドワークス</span>
           <div className="flex flex-wrap gap-1.5">
             {reg.searchQueries.crowdworks.map((q) => (
-              <Q key={q} text={q} />
+              <Q key={q} text={q} platform="crowdworks" />
             ))}
           </div>
         </div>
@@ -58,13 +75,13 @@ export default function QueriesCard() {
           <span className="af-label">Upwork</span>
           <div className="flex flex-wrap gap-1.5">
             {reg.searchQueries.upwork.map((q) => (
-              <Q key={q} text={q} />
+              <Q key={q} text={q} platform="upwork" />
             ))}
           </div>
         </div>
       </div>
       <p className="mt-2 text-xs text-neutral-400">
-        検証済み実績 {reg.evidenceCount}件から導出 ・ 検索→結果を丸ごとコピー→「一括」へ
+        検証済み実績 {reg.evidenceCount}件から導出 ・ チップ=クエリをコピー ／ ↗=その検索ページを開く（開いたら結果を丸ごとコピー→「一括」へ）
       </p>
     </section>
   );
