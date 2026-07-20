@@ -3,7 +3,7 @@
 name: Worker
 on:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 * * * *"
   push:
     paths: [".worker/kick"]
   workflow_dispatch: {}
@@ -32,6 +32,9 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
       - name: Report to ci-status-worker branch
         if: always()
         run: |

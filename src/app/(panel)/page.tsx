@@ -1,4 +1,5 @@
 import Link from "next/link";
+import QueriesCard from "@/components/QueriesCard";
 import { listJobs } from "@/lib/store";
 import {
   PLATFORM_LABELS,
@@ -64,6 +65,8 @@ export default async function Dashboard() {
           </div>
         ))}
       </section>
+
+      <QueriesCard />
 
       {actionable.length > 0 && (
         <section className="mb-6">

@@ -4,6 +4,7 @@
 // --dry: DBを使わずローカル検証（MOCK_MODE=1と併用）
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { runCapabilityScan } from "./capability_scan.mjs";
+import { runMailIngest } from "./mail_ingest.mjs";
 import { resolveDbUrl } from "../lib/dburl.mjs";
 
 const DRY = process.argv.includes("--dry");
@@ -30,8 +31,12 @@ function makeKv(sql) {
 
 async function execTask(kind, payload, kv) {
   if (kind === "capability_scan") return runCapabilityScan(payload ?? {}, kv);
+  if (kind === "mail_ingest") return runMailIngest(payload ?? {});
   throw new Error(`unknown task kind: ${kind}`);
 }
+
+// 定期実行時はメール取り込みを常時試行（未設定ならスキップ扱い）
+const ALWAYS_TASKS = [{ kind: "mail_ingest", payload: {} }];
 
 async function main() {
   let sql = null;
@@ -58,6 +63,16 @@ async function main() {
     } catch (e) {
       console.error("kick failed:", e);
       summary.push({ source: "kick", ok: false, error: String(e).slice(0, 300) });
+    }
+  }
+
+  // 定期タスク（常時試行）
+  for (const t of ALWAYS_TASKS) {
+    try {
+      const result = await execTask(t.kind, t.payload, kv);
+      summary.push({ source: "always", kind: t.kind, ok: true, result });
+    } catch (e) {
+      summary.push({ source: "always", kind: t.kind, ok: false, error: String(e).slice(0, 200) });
     }
   }
 
