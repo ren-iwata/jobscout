@@ -188,6 +188,7 @@ export type EventType =
   | "outcome_update"
   | "proposal_edited"
   | "joburl_set"
+  | "deleted"
   | "profile_update"
   | "error";
 

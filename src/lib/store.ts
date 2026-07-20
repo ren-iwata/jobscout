@@ -88,6 +88,17 @@ export async function listJobs(): Promise<JobCase[]> {
   }
 }
 
+/** 案件の完全削除（本番Postgresでは監査イベントが残る＝何をいつ消したかは追跡可能） */
+export async function deleteJob(id: string): Promise<void> {
+  if (pgEnabled()) {
+    await ensureSchema();
+    const sql = getSql();
+    await sql`delete from js_jobs where id = ${id}`;
+    return;
+  }
+  await fs.rm(jobDir(id), { recursive: true, force: true });
+}
+
 export async function appendEvent(
   jobId: string,
   type: EventType,

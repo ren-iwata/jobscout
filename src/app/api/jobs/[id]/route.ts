@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeJob } from "@/lib/analyzer/engine";
 import { isAdmin } from "@/lib/auth";
-import { appendEvent, getJob, readEvents, saveJob } from "@/lib/store";
+import { appendEvent, deleteJob, getJob, readEvents, saveJob } from "@/lib/store";
 import type { JobOutcome, JobStatus } from "@/lib/types";
 import { JOB_STATUSES } from "@/lib/types";
 
@@ -104,6 +104,25 @@ export async function PATCH(
   }
   await saveJob(job);
   return NextResponse.json({ job });
+}
+
+/** 案件の削除（誤取り込み・ノイズの掃除用。取り消し不可） */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  const { id } = await params;
+  const job = await getJob(id);
+  if (!job) return NextResponse.json({ error: "not found" }, { status: 404 });
+  await appendEvent(id, "deleted", "owner", {
+    status: job.status,
+    head: job.rawText.slice(0, 40),
+  });
+  await deleteJob(id);
+  return NextResponse.json({ ok: true });
 }
 
 /** 再分析（プロフィール更新後などに使用） */

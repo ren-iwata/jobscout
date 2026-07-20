@@ -1,4 +1,5 @@
 import Link from "next/link";
+import DeleteJobButton from "@/components/DeleteJobButton";
 import QueriesCard from "@/components/QueriesCard";
 import { listJobs } from "@/lib/store";
 import {
@@ -108,10 +109,10 @@ export default async function Dashboard() {
           </h2>
           <ul className="space-y-2">
             {screened.map((j) => (
-              <li key={j.id}>
+              <li key={j.id} className="af-card flex items-center gap-2 p-3 hover:border-blue-300">
                 <Link
                   href={`/jobs/${j.id}`}
-                  className="af-card flex items-center gap-3 p-3 hover:border-blue-300"
+                  className="flex min-w-0 flex-1 items-center gap-3"
                 >
                   <span className="af-chip bg-neutral-800 text-white">
                     {j.quickScore ?? "—"}/10
@@ -123,6 +124,7 @@ export default async function Dashboard() {
                     </p>
                   </div>
                 </Link>
+                <DeleteJobButton id={j.id} />
               </li>
             ))}
           </ul>
@@ -143,10 +145,10 @@ export default async function Dashboard() {
       ) : (
         <ul className="space-y-2">
           {jobs.map((j) => (
-            <li key={j.id}>
+            <li key={j.id} className="af-card flex items-center gap-2 p-4 hover:border-blue-300">
               <Link
                 href={`/jobs/${j.id}`}
-                className="af-card flex items-center gap-3 p-4 hover:border-blue-300"
+                className="flex min-w-0 flex-1 items-center gap-3"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate">
@@ -173,6 +175,7 @@ export default async function Dashboard() {
                   {STATUS_LABELS[j.status]}
                 </span>
               </Link>
+              <DeleteJobButton id={j.id} />
             </li>
           ))}
         </ul>

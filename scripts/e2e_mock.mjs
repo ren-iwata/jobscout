@@ -135,6 +135,13 @@ async function main() {
     "source search saved",
     withSrc.res.ok && withSrc.body?.job?.sourceSearch?.query === "Next.js 開発"
   );
+  const delId = withSrc.body?.job?.id;
+  const del = await jfetch(`/api/jobs/${delId}`, { method: "DELETE", ...auth });
+  check("job deleted", del.res.ok && del.body?.ok === true);
+  const delGet = await jfetch(`/api/jobs/${delId}`, auth);
+  check("deleted job gone", delGet.res.status === 404);
+  const delNoAuth = await jfetch(`/api/jobs/${id}`, { method: "DELETE" });
+  check("delete requires auth", delNoAuth.res.status === 401);
 
   // 5. 一覧・詳細・監査
   console.log("[5] 一覧・監査");
