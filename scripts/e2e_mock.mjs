@@ -142,6 +142,31 @@ async function main() {
   check("deleted job gone", delGet.res.status === 404);
   const delNoAuth = await jfetch(`/api/jobs/${id}`, { method: "DELETE" });
   check("delete requires auth", delNoAuth.res.status === 401);
+  // 一括削除
+  const bd1 = await jfetch("/api/jobs", {
+    method: "POST",
+    ...auth,
+    body: JSON.stringify({ rawText: "一括削除テストA: Webサイト制作の案件です。予算10万円。", platform: "crowdworks" }),
+  });
+  const bd2 = await jfetch("/api/jobs", {
+    method: "POST",
+    ...auth,
+    body: JSON.stringify({ rawText: "一括削除テストB: バナー作成の案件です。予算2万円。", platform: "crowdworks" }),
+  });
+  const bulkDel = await jfetch("/api/jobs/delete", {
+    method: "POST",
+    ...auth,
+    body: JSON.stringify({ ids: [bd1.body?.job?.id, bd2.body?.job?.id] }),
+  });
+  check("bulk delete 2", bulkDel.res.ok && bulkDel.body?.deleted === 2, JSON.stringify(bulkDel.body));
+  const bdGone = await jfetch(`/api/jobs/${bd1.body?.job?.id}`, auth);
+  check("bulk deleted gone", bdGone.res.status === 404);
+  const bulkDelNoAuth = await jfetch("/api/jobs/delete", {
+    method: "POST",
+    body: JSON.stringify({ ids: ["JS-X"] }),
+    headers: { "Content-Type": "application/json" },
+  });
+  check("bulk delete requires auth", bulkDelNoAuth.res.status === 401);
 
   // 5. 一覧・詳細・監査
   console.log("[5] 一覧・監査");

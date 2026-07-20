@@ -1,5 +1,5 @@
 import Link from "next/link";
-import DeleteJobButton from "@/components/DeleteJobButton";
+import JobBoard, { type JobRow } from "@/components/JobBoard";
 import QueriesCard from "@/components/QueriesCard";
 import { listJobs } from "@/lib/store";
 import {
@@ -49,6 +49,26 @@ export default async function Dashboard() {
   const screened = jobs
     .filter((j) => j.status === "SCREENED")
     .sort((a, b) => (b.quickScore ?? 0) - (a.quickScore ?? 0));
+
+  // クライアント側（選択削除UI）へ渡す軽量表示データ
+  const screenedRows: JobRow[] = screened.map((j) => ({
+    id: j.id,
+    main: j.rawText.slice(0, 40),
+    sub: j.screenReason ?? "",
+    score: j.quickScore ?? null,
+  }));
+  const allRows: JobRow[] = jobs.map((j) => ({
+    id: j.id,
+    main: j.analysis?.title ?? j.rawText.slice(0, 30),
+    sub: `${PLATFORM_LABELS[j.platform]} ・ ${j.id} ・ ${new Date(j.createdAt).toLocaleString("ja-JP")}`,
+    riskLabel:
+      j.analysis?.riskOverall && j.analysis.riskOverall !== "ok"
+        ? RISK_LABELS[j.analysis.riskOverall]
+        : null,
+    verdictKey: j.analysis?.verdict ?? null,
+    verdictLabel: j.analysis?.verdict ? VERDICT_LABELS[j.analysis.verdict] : null,
+    statusLabel: STATUS_LABELS[j.status],
+  }));
 
   return (
     <main>
@@ -102,84 +122,7 @@ export default async function Dashboard() {
         </section>
       )}
 
-      {screened.length > 0 && (
-        <section className="mb-6">
-          <h2 className="mb-2 text-sm font-bold text-neutral-600">
-            未精査（スコア順・タップでフル分析）
-          </h2>
-          <ul className="space-y-2">
-            {screened.map((j) => (
-              <li key={j.id} className="af-card flex items-center gap-2 p-3 hover:border-blue-300">
-                <Link
-                  href={`/jobs/${j.id}`}
-                  className="flex min-w-0 flex-1 items-center gap-3"
-                >
-                  <span className="af-chip bg-neutral-800 text-white">
-                    {j.quickScore ?? "—"}/10
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm">{j.rawText.slice(0, 40)}</p>
-                    <p className="truncate text-xs text-neutral-400">
-                      {j.screenReason}
-                    </p>
-                  </div>
-                </Link>
-                <DeleteJobButton id={j.id} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-bold">全案件</h1>
-        <Link href="/new" className="af-btn-primary">
-          ＋ 案件を取り込む
-        </Link>
-      </div>
-
-      {jobs.length === 0 ? (
-        <p className="af-card p-8 text-center text-sm text-neutral-400">
-          まだ案件がありません。「案件を分析する」から案件文を貼り付けてください。
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {jobs.map((j) => (
-            <li key={j.id} className="af-card flex items-center gap-2 p-4 hover:border-blue-300">
-              <Link
-                href={`/jobs/${j.id}`}
-                className="flex min-w-0 flex-1 items-center gap-3"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">
-                    {j.analysis?.title ?? j.rawText.slice(0, 30)}
-                  </p>
-                  <p className="text-xs text-neutral-400 mt-0.5">
-                    {PLATFORM_LABELS[j.platform]} ・ {j.id} ・{" "}
-                    {new Date(j.createdAt).toLocaleString("ja-JP")}
-                  </p>
-                </div>
-                {j.analysis?.riskOverall && j.analysis.riskOverall !== "ok" && (
-                  <span className="af-chip bg-red-50 text-red-700">
-                    {RISK_LABELS[j.analysis.riskOverall]}
-                  </span>
-                )}
-                {j.analysis?.verdict && (
-                  <span
-                    className={`af-chip ${VERDICT_COLORS[j.analysis.verdict] ?? "bg-neutral-100"}`}
-                  >
-                    {VERDICT_LABELS[j.analysis.verdict]}
-                  </span>
-                )}
-                <span className="af-chip bg-neutral-100 text-neutral-600">
-                  {STATUS_LABELS[j.status]}
-                </span>
-              </Link>
-              <DeleteJobButton id={j.id} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <JobBoard screened={screenedRows} all={allRows} />
     </main>
   );
 }
