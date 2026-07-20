@@ -47,8 +47,20 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+  // 案件募集でないもの（運営のお知らせ・広告・登録通知等）は登録せず破棄する
+  const allCount = items.length;
+  items = items.filter((it) => it.isJobPosting);
+  const droppedCount = allCount - items.length;
   if (items.length === 0) {
-    return NextResponse.json({ error: "案件を検出できませんでした" }, { status: 422 });
+    return NextResponse.json(
+      {
+        error:
+          droppedCount > 0
+            ? `案件募集は含まれていませんでした（お知らせ・広告等${droppedCount}件を除外）`
+            : "案件を検出できませんでした",
+      },
+      { status: 422 }
+    );
   }
 
   const created: JobCase[] = [];
@@ -87,5 +99,6 @@ export async function POST(req: NextRequest) {
       .filter((j) => (j.quickScore ?? 0) >= 6)
       .slice(0, 5)
       .map((j) => j.id),
+    droppedCount, // お知らせ・広告等として除外した件数
   });
 }

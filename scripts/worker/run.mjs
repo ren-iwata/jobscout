@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { runCapabilityScan } from "./capability_scan.mjs";
 import { runMailIngest } from "./mail_ingest.mjs";
+import { runNoiseSweep } from "./noise_sweep.mjs";
 import { resolveDbUrl } from "../lib/dburl.mjs";
 
 const DRY = process.argv.includes("--dry");
@@ -29,9 +30,10 @@ function makeKv(sql) {
   };
 }
 
-async function execTask(kind, payload, kv) {
+async function execTask(kind, payload, kv, sql) {
   if (kind === "capability_scan") return runCapabilityScan(payload ?? {}, kv);
   if (kind === "mail_ingest") return runMailIngest(payload ?? {});
+  if (kind === "noise_sweep") return runNoiseSweep(payload ?? {}, sql);
   throw new Error(`unknown task kind: ${kind}`);
 }
 
@@ -57,7 +59,7 @@ async function main() {
       const kick = JSON.parse(readFileSync(".worker/kick", "utf8"));
       if (kick?.kind) {
         console.log(`kick: ${kick.kind}`);
-        const result = await execTask(kick.kind, kick.payload, kv);
+        const result = await execTask(kick.kind, kick.payload, kv, sql);
         summary.push({ source: "kick", kind: kick.kind, ok: true, result });
       }
     } catch (e) {
@@ -69,7 +71,7 @@ async function main() {
   // 定期タスク（常時試行）
   for (const t of ALWAYS_TASKS) {
     try {
-      const result = await execTask(t.kind, t.payload, kv);
+      const result = await execTask(t.kind, t.payload, kv, sql);
       summary.push({ source: "always", kind: t.kind, ok: true, result });
     } catch (e) {
       summary.push({ source: "always", kind: t.kind, ok: false, error: String(e).slice(0, 200) });
@@ -82,7 +84,7 @@ async function main() {
     for (const t of tasks) {
       await sql`update js_tasks set status = 'running', updated_at = now() where id = ${t.id}`;
       try {
-        const result = await execTask(t.kind, t.payload, kv);
+        const result = await execTask(t.kind, t.payload, kv, sql);
         await sql`update js_tasks set status = 'done', result = ${sql.json(result)}, updated_at = now() where id = ${t.id}`;
         summary.push({ source: "queue", id: Number(t.id), kind: t.kind, ok: true });
         console.log(`task ${t.id} (${t.kind}): done`);

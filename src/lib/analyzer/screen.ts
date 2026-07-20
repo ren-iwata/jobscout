@@ -12,6 +12,7 @@ export interface ScreenedItem {
   platformGuess: Platform;
   quickScore: number; // 1-10
   worthFullAnalysis: boolean;
+  isJobPosting: boolean; // 具体的な仕事の募集か（運営のお知らせ・広告・登録通知等はfalse→登録しない）
   reason: string;
 }
 
@@ -35,6 +36,11 @@ const SCREEN_TOOL = {
             platform_guess: { type: "string", enum: PLATFORMS },
             quick_score: { type: "number", minimum: 1, maximum: 10 },
             worth_full_analysis: { type: "boolean" },
+            is_job_posting: {
+              type: "boolean",
+              description:
+                "具体的な仕事の募集（発注者が作業を依頼する内容）であればtrue。プラットフォーム運営からのお知らせ・広告・メールマガジン・登録完了通知・相場紹介・利用ガイド・サービス案内・アンケート等はfalse",
+            },
             reason: { type: "string", description: "スコアの理由を1文で" },
           },
           required: [
@@ -43,6 +49,7 @@ const SCREEN_TOOL = {
             "platform_guess",
             "quick_score",
             "worth_full_analysis",
+            "is_job_posting",
             "reason",
           ],
         },
@@ -64,14 +71,22 @@ function mockScreen(rawText: string): ScreenedItem[] {
     .map((b) => b.trim())
     .filter((b) => b.length > 15)
     .slice(0, 20)
-    .map((b) => ({
-      title: b.slice(0, 20),
-      rawExcerpt: b,
-      platformGuess: /[ぁ-んァ-ン]/.test(b) ? ("crowdworks" as const) : ("upwork" as const),
-      quickScore: b.includes("AI") ? 8 : 4,
-      worthFullAnalysis: b.includes("AI"),
-      reason: b.includes("AI") ? "AI関連で適合度が高い（モック）" : "適合度が低い（モック）",
-    }));
+    .map((b) => {
+      const noise = /ご登録ありがとう|メールマガジン|発注相場|お知らせ/.test(b);
+      return {
+        title: b.slice(0, 20),
+        rawExcerpt: b,
+        platformGuess: /[ぁ-んァ-ン]/.test(b) ? ("crowdworks" as const) : ("upwork" as const),
+        quickScore: noise ? 1 : b.includes("AI") ? 8 : 4,
+        worthFullAnalysis: !noise && b.includes("AI"),
+        isJobPosting: !noise,
+        reason: noise
+          ? "案件募集ではない（モック）"
+          : b.includes("AI")
+            ? "AI関連で適合度が高い（モック）"
+            : "適合度が低い（モック）",
+      };
+    });
 }
 
 export async function screenBulk(rawText: string): Promise<ScreenedItem[]> {
@@ -82,7 +97,8 @@ export async function screenBulk(rawText: string): Promise<ScreenedItem[]> {
     max_tokens: 8192,
     system: `あなたは案件選別エージェントである。貼り付けられた検索結果ページのテキストを案件ごとに分割し、利用者にとっての価値を1-10で軽量採点する。
 採点基準: 利用者の技術・実績との適合、予算と単価基準の整合、戦略（取りたい/避けたい）との一致、危険の気配（規約違反示唆・極端な低予算・無償要求は減点しworth_full_analysis=false）。
-7点以上または迷う場合は worth_full_analysis=true。案件でないノイズ（ナビゲーション・広告・フッター）は無視する。raw_excerptは原文を保持する。
+7点以上または迷う場合は worth_full_analysis=true。raw_excerptは原文を保持する。
+重要: 具体的な仕事の募集でないもの——運営からのお知らせ・広告・メールマガジン・登録完了通知・相場紹介・利用ガイド・サービス案内・アンケート・ナビゲーション断片——は is_job_posting=false とせよ（これらは登録されず破棄される。判断に迷う場合のみtrueに倒す）。
 
 # 利用者プロフィール
 ${profileForPrompt(profile)}`,
@@ -100,6 +116,7 @@ ${profileForPrompt(profile)}`,
     platformGuess: j.platform_guess,
     quickScore: j.quick_score,
     worthFullAnalysis: j.worth_full_analysis,
+    isJobPosting: j.is_job_posting !== false, // 未指定はtrue側に倒す（取りこぼし防止）
     reason: j.reason,
   }));
   /* eslint-enable @typescript-eslint/no-explicit-any */

@@ -176,11 +176,12 @@ async function main() {
     ...auth,
     body: JSON.stringify({
       rawText:
-        "【AI開発】社内文書検索チャットボットの構築。予算25万円。RAG希望。\n\n\nロゴデザインをお願いします。予算5000円。\n\n\n【AI自動化】ECの在庫アラートをAIで自動化したい。予算15万円。",
+        "【AI開発】社内文書検索チャットボットの構築。予算25万円。RAG希望。\n\n\nロゴデザインをお願いします。予算5000円。\n\n\n【AI自動化】ECの在庫アラートをAIで自動化したい。予算15万円。\n\n\nご登録ありがとうございます。本日はクラウドワークスの発注相場をご紹介いたします（お知らせ）。",
     }),
   });
   check("bulk screened", bulk.res.ok, JSON.stringify(bulk.body).slice(0, 120));
   check("bulk split 3", (bulk.body?.jobs?.length ?? 0) === 3, String(bulk.body?.jobs?.length));
+  check("noise dropped", bulk.body?.droppedCount === 1, String(bulk.body?.droppedCount));
   const recIds = bulk.body?.recommendFullAnalysis ?? [];
   check("bulk recommends AI jobs", recIds.length === 2, String(recIds.length));
   const full = await jfetch(`/api/jobs/${recIds[0]}`, { method: "POST", ...auth });

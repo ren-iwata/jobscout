@@ -26,7 +26,8 @@ const VERDICT_RANK: Record<string, number> = {
 };
 
 export default async function Dashboard() {
-  const jobs = await listJobs();
+  // アーカイブ済み（ノイズ・見送り）は表示しない
+  const jobs = (await listJobs()).filter((j) => j.status !== "ARCHIVED");
   const applied = jobs.filter((j) => j.outcome.appliedAt).length;
   const replied = jobs.filter((j) => j.outcome.replied).length;
   const won = jobs.filter((j) => j.outcome.result === "won").length;

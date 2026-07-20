@@ -72,6 +72,17 @@ export async function runMailIngest(payload) {
           await client.messageFlagsAdd(uid, ["\\Seen"]);
           continue;
         }
+        // 明白な運営メール（登録通知・メルマガ・広告等）は選別AIに掛けず既読スキップ
+        const subject = parsed.subject ?? "";
+        if (
+          /ご登録(ありがとう|完了)|メールマガジン|メルマガ|発注相場|キャンペーン|アンケート|利用ガイド|お知らせ/.test(
+            subject
+          )
+        ) {
+          await client.messageFlagsAdd(uid, ["\\Seen"]);
+          summary.skippedPromo = (summary.skippedPromo ?? 0) + 1;
+          continue;
+        }
         summary.mails++;
         const bulk = await fetch(`${BASE}/api/jobs/bulk`, {
           method: "POST",

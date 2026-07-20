@@ -75,7 +75,10 @@ export default function NewJobPage() {
       const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? "選別に失敗しました");
       const ids: string[] = data.recommendFullAnalysis ?? [];
-      setProgress(`${data.jobs.length}件を検出。上位${ids.length}件を精査中…`);
+      const dropped = data.droppedCount
+        ? `（お知らせ・広告${data.droppedCount}件を除外）`
+        : "";
+      setProgress(`${data.jobs.length}件を検出${dropped}。上位${ids.length}件を精査中…`);
       for (let i = 0; i < ids.length; i++) {
         setProgress(`精査中 ${i + 1}/${ids.length} …（各10〜30秒）`);
         await fetch(`/api/jobs/${ids[i]}`, { method: "POST" }).catch(() => null);

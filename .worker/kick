@@ -1,4 +1,4 @@
 {
-  "kind": "mail_ingest",
-  "payload": { "note": "Gmail接続の検証実行 2026-07-20" }
+  "kind": "noise_sweep",
+  "payload": { "note": "is_job_posting導入以前に入った運営メール等のアーカイブ 2026-07-20" }
 }
