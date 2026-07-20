@@ -168,6 +168,7 @@ export interface JobCase {
   screenReason?: string;
   analysis?: JobAnalysis;
   outcome: JobOutcome;
+  jobUrl?: string; // プラットフォーム上の案件ページURL（原文から自動抽出 or 人間が貼る）
   thread?: ThreadMsg[]; // クライアント対応（貼り付け→返信案）
   workContract?: Record<string, unknown>; // WON時に自動生成
 }
@@ -185,6 +186,7 @@ export type EventType =
   | "status_change"
   | "outcome_update"
   | "proposal_edited"
+  | "joburl_set"
   | "profile_update"
   | "error";
 

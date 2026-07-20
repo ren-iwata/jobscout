@@ -110,6 +110,18 @@ async function main() {
     body: JSON.stringify({ proposalDraft: "編集済み提案文" }),
   });
   check("proposal edit saved", edit.body?.job?.analysis?.proposalDraft === "編集済み提案文");
+  const setUrl = await jfetch(`/api/jobs/${id}`, {
+    method: "PATCH",
+    ...auth,
+    body: JSON.stringify({ jobUrl: "https://crowdworks.jp/public/jobs/1234567" }),
+  });
+  check("job url saved", setUrl.res.ok && setUrl.body?.job?.jobUrl?.includes("crowdworks.jp"));
+  const badUrl = await jfetch(`/api/jobs/${id}`, {
+    method: "PATCH",
+    ...auth,
+    body: JSON.stringify({ jobUrl: "javascript:alert(1)" }),
+  });
+  check("invalid job url rejected", badUrl.res.status === 400);
 
   // 5. 一覧・詳細・監査
   console.log("[5] 一覧・監査");

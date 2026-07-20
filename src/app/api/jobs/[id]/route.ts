@@ -38,6 +38,7 @@ export async function PATCH(
     status?: string;
     outcome?: Partial<JobOutcome>;
     proposalDraft?: string;
+    jobUrl?: string;
   };
   try {
     body = await req.json();
@@ -88,6 +89,15 @@ export async function PATCH(
     job.analysis.proposalDraft = body.proposalDraft;
     await appendEvent(id, "proposal_edited", "owner", {});
     updated.push("proposalDraft");
+  }
+  if (body.jobUrl !== undefined) {
+    const u = body.jobUrl.trim();
+    if (u && !/^https?:\/\/\S{1,480}$/.test(u)) {
+      return NextResponse.json({ error: "URLの形式が不正です（http:// または https:// で始まる必要）" }, { status: 400 });
+    }
+    job.jobUrl = u || undefined;
+    await appendEvent(id, "joburl_set", "owner", {});
+    updated.push("jobUrl");
   }
   if (updated.length === 0) {
     return NextResponse.json({ error: "no updates" }, { status: 400 });

@@ -54,6 +54,15 @@ function extractJobUrl(rawText: string): string | null {
   return urls.find((u) => u.includes("upwork.com") || u.includes("crowdworks.jp")) ?? null;
 }
 
+/** URLが無い案件の代替: タイトルでプラットフォーム内検索を開く
+ *  （特定案件を探す用途なので、絞り込みフィルタは付けない——付けると当の案件が除外され得る） */
+function platformSearchUrl(platform: string, title: string): string {
+  const q = encodeURIComponent(title.slice(0, 80));
+  if (platform === "crowdworks")
+    return `https://crowdworks.jp/public/jobs/search?search%5Bkeywords%5D=${q}`;
+  return `https://www.upwork.com/nx/search/jobs/?q=${q}`;
+}
+
 export default function JobDetail({ id }: { id: string }) {
   const [job, setJob] = useState<JobCase | null>(null);
   const [busy, setBusy] = useState(false);
@@ -61,6 +70,7 @@ export default function JobDetail({ id }: { id: string }) {
   const [proposal, setProposal] = useState("");
   const [outcomeBuf, setOutcomeBuf] = useState<Record<string, string>>({});
   const [clientMsg, setClientMsg] = useState("");
+  const [urlBuf, setUrlBuf] = useState("");
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/jobs/${id}`, { cache: "no-store" });
@@ -138,21 +148,49 @@ export default function JobDetail({ id }: { id: string }) {
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
-            {extractJobUrl(job.rawText) && (
-              <a
-                href={extractJobUrl(job.rawText)!}
-                target="_blank"
-                rel="noreferrer"
-                className="af-btn-ghost"
-              >
-                案件ページを開く ↗
-              </a>
-            )}
+            {(() => {
+              const url = job.jobUrl ?? extractJobUrl(job.rawText);
+              if (url)
+                return (
+                  <a href={url} target="_blank" rel="noreferrer" className="af-btn-ghost">
+                    案件ページを開く ↗
+                  </a>
+                );
+              if (a?.title && job.platform !== "other")
+                return (
+                  <a
+                    href={platformSearchUrl(job.platform, a.title)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="af-btn-ghost"
+                  >
+                    タイトルで検索 ↗
+                  </a>
+                );
+              return null;
+            })()}
             <button className="af-btn-primary" disabled={busy} onClick={reanalyze}>
               {a ? "再分析" : "フル分析する"}
             </button>
           </div>
         </div>
+        {!(job.jobUrl ?? extractJobUrl(job.rawText)) && (
+          <div className="mt-3 flex gap-2">
+            <input
+              className="af-input flex-1 text-xs"
+              placeholder="案件ページのURLを貼ると、次回からワンクリックで開けます"
+              value={urlBuf}
+              onChange={(e) => setUrlBuf(e.target.value)}
+            />
+            <button
+              className="af-btn-ghost shrink-0"
+              disabled={busy || !urlBuf.trim()}
+              onClick={() => patch({ jobUrl: urlBuf.trim() }, "案件URLを保存しました")}
+            >
+              保存
+            </button>
+          </div>
+        )}
         {a && (
           <div
             className={`mt-3 rounded-xl border px-4 py-3 ${VERDICT_BANNER[a.verdict] ?? ""}`}
