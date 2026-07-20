@@ -32,12 +32,25 @@ export async function POST(req: NextRequest) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  let body: { rawText?: string; platform?: string };
+  let body: {
+    rawText?: string;
+    platform?: string;
+    sourceSearch?: { platform?: string; query?: string };
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
+  const ss = body.sourceSearch;
+  const sourceSearch =
+    ss &&
+    (ss.platform === "crowdworks" || ss.platform === "upwork") &&
+    typeof ss.query === "string" &&
+    ss.query.trim().length > 0 &&
+    ss.query.length <= 120
+      ? { platform: ss.platform as "crowdworks" | "upwork", query: ss.query.trim() }
+      : undefined;
   const rawText = (body.rawText ?? "").trim();
   if (!rawText) {
     return NextResponse.json({ error: "案件文が空です" }, { status: 400 });
@@ -59,6 +72,7 @@ export async function POST(req: NextRequest) {
     rawText,
     status: "ANALYZED",
     outcome: {},
+    sourceSearch,
   };
   await appendEvent(j.id, "job_created", "owner", { length: rawText.length });
 

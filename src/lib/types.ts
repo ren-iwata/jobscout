@@ -169,6 +169,7 @@ export interface JobCase {
   analysis?: JobAnalysis;
   outcome: JobOutcome;
   jobUrl?: string; // プラットフォーム上の案件ページURL（原文から自動抽出 or 人間が貼る）
+  sourceSearch?: { platform: "crowdworks" | "upwork"; query: string }; // 取り込み元の検索（検索ページへ戻るため）
   thread?: ThreadMsg[]; // クライアント対応（貼り付け→返信案）
   workContract?: Record<string, unknown>; // WON時に自動生成
 }

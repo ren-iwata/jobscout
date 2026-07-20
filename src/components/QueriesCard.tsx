@@ -2,27 +2,13 @@
 
 // 「今日の検索」カード: 能力レジストリから導出された検索クエリを表示・コピー
 import { useEffect, useState } from "react";
+import { rememberSearch, searchUrl } from "@/lib/searchUrl";
 
 interface Registry {
   searchQueries: { crowdworks: string[]; upwork: string[] } | null;
   fitJobTypes: string[];
   evidenceCount: number;
   updatedAt: string | null;
-}
-
-function searchUrl(platform: "crowdworks" | "upwork", q: string): string {
-  if (platform === "crowdworks") {
-    // 募集終了を除外・新着順
-    return (
-      `https://crowdworks.jp/public/jobs/search?search%5Bkeywords%5D=${encodeURIComponent(q)}` +
-      `&hide_expired=true&order=new`
-    );
-  }
-  // 新着順・支払い方法確認済みクライアント・提案数10件未満（勝ち目のある鮮度重視）
-  return (
-    `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(q)}` +
-    `&sort=recency&payment_verified=1&proposals=0-4,5-9`
-  );
 }
 
 function Q({ text, platform }: { text: string; platform: "crowdworks" | "upwork" }) {
@@ -47,6 +33,7 @@ function Q({ text, platform }: { text: string; platform: "crowdworks" | "upwork"
         rel="noreferrer"
         className="af-chip bg-blue-50 text-blue-700 hover:bg-blue-100"
         title="この検索を開く"
+        onClick={() => rememberSearch(platform, text)}
       >
         ↗
       </a>

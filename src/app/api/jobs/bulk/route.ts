@@ -13,12 +13,25 @@ export async function POST(req: NextRequest) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  let body: { rawText?: string };
+  let body: {
+    rawText?: string;
+    sourceSearch?: { platform?: string; query?: string };
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
+  // 取り込み元の検索（任意）: 案件から検索ページへ戻るために保存する
+  const ss = body.sourceSearch;
+  const sourceSearch =
+    ss &&
+    (ss.platform === "crowdworks" || ss.platform === "upwork") &&
+    typeof ss.query === "string" &&
+    ss.query.trim().length > 0 &&
+    ss.query.length <= 120
+      ? { platform: ss.platform as "crowdworks" | "upwork", query: ss.query.trim() }
+      : undefined;
   const rawText = (body.rawText ?? "").trim();
   if (!rawText) return NextResponse.json({ error: "テキストが空です" }, { status: 400 });
   if (rawText.length > 100000) {
@@ -51,6 +64,7 @@ export async function POST(req: NextRequest) {
       quickScore: it.quickScore,
       screenReason: it.reason,
       outcome: {},
+      sourceSearch,
     };
     await saveJob(j);
     await appendEvent(j.id, "screened", "agent", {

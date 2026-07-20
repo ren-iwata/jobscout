@@ -2,6 +2,7 @@
 
 // 案件詳細: 分析結果の閲覧・提案文の編集・応募結果の記録
 import { useCallback, useEffect, useState } from "react";
+import { listingUrl, searchUrl } from "@/lib/searchUrl";
 import type { JobCase } from "@/lib/types";
 import {
   AXES,
@@ -52,15 +53,6 @@ async function safeJson(res: Response): Promise<any> {
 function extractJobUrl(rawText: string): string | null {
   const urls = rawText.match(/https?:\/\/[^\s"'<>\)\]]+/g) ?? [];
   return urls.find((u) => u.includes("upwork.com") || u.includes("crowdworks.jp")) ?? null;
-}
-
-/** URLが無い案件の代替: タイトルでプラットフォーム内検索を開く
- *  （特定案件を探す用途なので、絞り込みフィルタは付けない——付けると当の案件が除外され得る） */
-function platformSearchUrl(platform: string, title: string): string {
-  const q = encodeURIComponent(title.slice(0, 80));
-  if (platform === "crowdworks")
-    return `https://crowdworks.jp/public/jobs/search?search%5Bkeywords%5D=${q}`;
-  return `https://www.upwork.com/nx/search/jobs/?q=${q}`;
 }
 
 export default function JobDetail({ id }: { id: string }) {
@@ -156,15 +148,28 @@ export default function JobDetail({ id }: { id: string }) {
                     案件ページを開く ↗
                   </a>
                 );
-              if (a?.title && job.platform !== "other")
+              // 取り込み元の検索ページ（募集終了除外等のフィルタ付き）へ戻る
+              if (job.sourceSearch)
                 return (
                   <a
-                    href={platformSearchUrl(job.platform, a.title)}
+                    href={searchUrl(job.sourceSearch.platform, job.sourceSearch.query)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="af-btn-ghost"
+                    title={`検索「${job.sourceSearch.query}」の結果ページを開く`}
+                  >
+                    検索ページを開く ↗
+                  </a>
+                );
+              if (job.platform === "crowdworks" || job.platform === "upwork")
+                return (
+                  <a
+                    href={listingUrl(job.platform)}
                     target="_blank"
                     rel="noreferrer"
                     className="af-btn-ghost"
                   >
-                    タイトルで検索 ↗
+                    新着案件を探す ↗
                   </a>
                 );
               return null;

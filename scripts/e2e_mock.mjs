@@ -122,6 +122,19 @@ async function main() {
     body: JSON.stringify({ jobUrl: "javascript:alert(1)" }),
   });
   check("invalid job url rejected", badUrl.res.status === 400);
+  const withSrc = await jfetch("/api/jobs", {
+    method: "POST",
+    ...auth,
+    body: JSON.stringify({
+      rawText: "検索元テスト: Next.jsでのWebアプリ開発案件。要件は追って共有。予算は応相談。",
+      platform: "crowdworks",
+      sourceSearch: { platform: "crowdworks", query: "Next.js 開発" },
+    }),
+  });
+  check(
+    "source search saved",
+    withSrc.res.ok && withSrc.body?.job?.sourceSearch?.query === "Next.js 開発"
+  );
 
   // 5. 一覧・詳細・監査
   console.log("[5] 一覧・監査");

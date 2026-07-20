@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { recallSearch, type LastSearch } from "@/lib/searchUrl";
 
 type Mode = "bulk" | "single";
 
@@ -25,6 +26,12 @@ export default function NewJobPage() {
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastSearch, setLastSearch] = useState<LastSearch | null>(null);
+
+  // 「今日の検索」の↗から来た場合、その検索を取り込む案件に紐付ける（案件から検索ページへ戻れる）
+  useEffect(() => {
+    setLastSearch(recallSearch());
+  }, []);
 
   async function submitSingle() {
     setSending(true);
@@ -33,7 +40,13 @@ export default function NewJobPage() {
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rawText, platform: platform || undefined }),
+        body: JSON.stringify({
+          rawText,
+          platform: platform || undefined,
+          sourceSearch: lastSearch
+            ? { platform: lastSearch.platform, query: lastSearch.query }
+            : undefined,
+        }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? "分析に失敗しました");
@@ -52,7 +65,12 @@ export default function NewJobPage() {
       const res = await fetch("/api/jobs/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rawText }),
+        body: JSON.stringify({
+          rawText,
+          sourceSearch: lastSearch
+            ? { platform: lastSearch.platform, query: lastSearch.query }
+            : undefined,
+        }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? "選別に失敗しました");
@@ -88,6 +106,22 @@ export default function NewJobPage() {
           1件ずつ
         </button>
       </div>
+
+      {lastSearch && (
+        <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-xs text-blue-800">
+          <span>
+            検索元を紐付け: 「{lastSearch.query}」（
+            {lastSearch.platform === "crowdworks" ? "クラウドワークス" : "Upwork"}
+            ）— 取り込んだ案件から同じ検索ページへ戻れます
+          </span>
+          <button
+            className="ml-auto shrink-0 underline"
+            onClick={() => setLastSearch(null)}
+          >
+            外す
+          </button>
+        </div>
+      )}
 
       <div className="af-card p-5 space-y-3">
         {mode === "bulk" ? (
