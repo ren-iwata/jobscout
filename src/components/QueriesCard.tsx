@@ -11,9 +11,18 @@ interface Registry {
 }
 
 function searchUrl(platform: "crowdworks" | "upwork", q: string): string {
-  return platform === "crowdworks"
-    ? `https://crowdworks.jp/public/jobs/search?search%5Bkeywords%5D=${encodeURIComponent(q)}`
-    : `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(q)}`;
+  if (platform === "crowdworks") {
+    // 募集終了を除外・新着順
+    return (
+      `https://crowdworks.jp/public/jobs/search?search%5Bkeywords%5D=${encodeURIComponent(q)}` +
+      `&hide_expired=true&order=new`
+    );
+  }
+  // 新着順・支払い方法確認済みクライアント・提案数10件未満（勝ち目のある鮮度重視）
+  return (
+    `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(q)}` +
+    `&sort=recency&payment_verified=1&proposals=0-4,5-9`
+  );
 }
 
 function Q({ text, platform }: { text: string; platform: "crowdworks" | "upwork" }) {
@@ -81,7 +90,7 @@ export default function QueriesCard() {
         </div>
       </div>
       <p className="mt-2 text-xs text-neutral-400">
-        検証済み実績 {reg.evidenceCount}件から導出 ・ チップ=クエリをコピー ／ ↗=その検索ページを開く（開いたら結果を丸ごとコピー→「一括」へ）
+        検証済み実績 {reg.evidenceCount}件から導出 ・ チップ=コピー ／ ↗=検索を開く（CW: 募集終了除外・新着順 / Upwork: 新着順・支払確認済み・提案10件未満）→結果を丸ごとコピー→「一括」へ
       </p>
     </section>
   );
