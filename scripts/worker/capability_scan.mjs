@@ -92,9 +92,21 @@ const SYNTH_TOOL = {
       fitJobTypes: { type: "array", items: { type: "string" }, description: "適合する案件タイプ" },
       searchQueries: {
         type: "object",
+        description:
+          "検索の役割は広く網を張ること（絞り込みは下流の選別AIが担当）。発注者＝非技術者が実際に書く語彙で作る",
         properties: {
-          crowdworks: { type: "array", items: { type: "string" } },
-          upwork: { type: "array", items: { type: "string" } },
+          crowdworks: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "日本語・各1〜2語（AND検索のため長いと0件になる）。広め5件（例: チャットボット, ChatGPT, AI 自動化, 業務効率化 ツール, LINE bot）＋技術特化2件まで",
+          },
+          upwork: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "英語・各1〜3語。広め5件（例: AI chatbot, ChatGPT integration, AI automation）＋技術特化2件まで",
+          },
         },
         required: ["crowdworks", "upwork"],
       },
@@ -129,7 +141,8 @@ async function synthesize(facts) {
     model: MODEL,
     max_tokens: 8192,
     system: `あなたは能力分析エンジンである。フリーランサーの成果物について収集された「事実」（リポジトリ実体・稼働URLの応答）だけを根拠に、受注活動で使える検証済み能力レジストリを構築する。
-原則: 事実にないことを盛らない。稼働確認できたものは「稼働確認済み」と明記する。エラーだったURLは含めない。summaryは発注者に価値が伝わる日本語で書く。idは安定したslugにする。`,
+原則: 事実にないことを盛らない。稼働確認できたものは「稼働確認済み」と明記する。エラーだったURLは含めない。summaryは発注者に価値が伝わる日本語で書く。idは安定したslugにする。
+searchQueriesの設計原則: 検索は「発見」の道具であり、絞り込みは下流の選別AIが行う。だからヒット数を優先し、発注者（非技術者）が実際に案件文に書く言葉で作る。技術者しか使わない語（RAG・MCP・LLM・SDK等）を検索語の中心にしない。各語は短く（クラウドワークスはAND検索のため2語以内）。能力レジストリと矛盾する分野（できないこと）の語は入れない。`,
     messages: [
       {
         role: "user",

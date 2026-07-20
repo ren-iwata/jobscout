@@ -1,4 +1,12 @@
 {
-  "kind": "noise_sweep",
-  "payload": { "note": "is_job_posting導入以前に入った運営メール等のアーカイブ 2026-07-20" }
+  "kind": "capability_scan",
+  "payload": {
+    "note": "検索クエリを買い手語彙へ再導出 2026-07-20",
+    "githubUsers": ["ren-iwata"],
+    "urls": [
+      "https://agentfront-claude.vercel.app",
+      "https://jobscout-nine.vercel.app",
+      "https://loop-delta-nine.vercel.app"
+    ]
+  }
 }
