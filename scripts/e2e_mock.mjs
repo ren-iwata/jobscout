@@ -122,6 +122,18 @@ async function main() {
     body: JSON.stringify({ jobUrl: "javascript:alert(1)" }),
   });
   check("invalid job url rejected", badUrl.res.status === 400);
+  const rawUp = await jfetch(`/api/jobs/${id}`, {
+    method: "PATCH",
+    ...auth,
+    body: JSON.stringify({ rawText: "全文差し替えテスト: 社内文書検索AIチャットボットの開発。要件はRAG構成、予算30万円、納期1ヶ月。既存のNotion文書1000件を対象とする。" }),
+  });
+  check("raw text replaced", rawUp.res.ok && rawUp.body?.job?.rawText?.includes("Notion文書1000件"));
+  const rawShort = await jfetch(`/api/jobs/${id}`, {
+    method: "PATCH",
+    ...auth,
+    body: JSON.stringify({ rawText: "短い" }),
+  });
+  check("short raw text rejected", rawShort.res.status === 400);
   const withSrc = await jfetch("/api/jobs", {
     method: "POST",
     ...auth,

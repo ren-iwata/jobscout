@@ -39,6 +39,7 @@ export async function PATCH(
     outcome?: Partial<JobOutcome>;
     proposalDraft?: string;
     jobUrl?: string;
+    rawText?: string;
   };
   try {
     body = await req.json();
@@ -89,6 +90,19 @@ export async function PATCH(
     job.analysis.proposalDraft = body.proposalDraft;
     await appendEvent(id, "proposal_edited", "owner", {});
     updated.push("proposalDraft");
+  }
+  // 全文差し替え（一覧の断片→詳細ページの全文。再分析は別途POSTで行う）
+  if (body.rawText !== undefined) {
+    const t = body.rawText.trim();
+    if (t.length < 30) {
+      return NextResponse.json({ error: "全文が短すぎます（30字以上）" }, { status: 400 });
+    }
+    if (t.length > 40000) {
+      return NextResponse.json({ error: "全文が長すぎます（4万字まで）" }, { status: 400 });
+    }
+    job.rawText = t;
+    await appendEvent(id, "raw_updated", "owner", { length: t.length });
+    updated.push("rawText");
   }
   if (body.jobUrl !== undefined) {
     const u = body.jobUrl.trim();

@@ -63,6 +63,9 @@ export default function JobDetail({ id }: { id: string }) {
   const [outcomeBuf, setOutcomeBuf] = useState<Record<string, string>>({});
   const [clientMsg, setClientMsg] = useState("");
   const [urlBuf, setUrlBuf] = useState("");
+  const [fullText, setFullText] = useState("");
+  const [proposalEdited, setProposalEdited] = useState(false);
+  const [confirmRe, setConfirmRe] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/jobs/${id}`, { cache: "no-store" });
@@ -70,6 +73,11 @@ export default function JobDetail({ id }: { id: string }) {
     const data = await safeJson(res);
     setJob(data.job);
     setProposal(data.job.analysis?.proposalDraft ?? "");
+    // 提案文を編集済みなら、再分析（＝生成し直しで上書き）の前に確認を挟む
+    setProposalEdited(
+      Array.isArray(data.events) &&
+        data.events.some((e: { type?: string }) => e.type === "proposal_edited")
+    );
   }, [id]);
 
   useEffect(() => {
@@ -100,7 +108,20 @@ export default function JobDetail({ id }: { id: string }) {
     }
   }
 
+  /** 編集済み提案文の上書きガード: 続行してよければtrue */
+  function guardProposalOverwrite(): boolean {
+    if (!proposalEdited || confirmRe) {
+      setConfirmRe(false);
+      return true;
+    }
+    setConfirmRe(true);
+    setTimeout(() => setConfirmRe(false), 6000);
+    showNotice("⚠ 編集済みの提案文が新しい生成文で上書きされます。続けるならもう一度押してください");
+    return false;
+  }
+
   async function reanalyze() {
+    if (!guardProposalOverwrite()) return;
     setBusy(true);
     showNotice("再分析中…（10〜30秒）");
     try {
@@ -111,6 +132,32 @@ export default function JobDetail({ id }: { id: string }) {
       showNotice("再分析しました");
     } catch (e) {
       showNotice(`⚠ ${e instanceof Error ? e.message : "再分析に失敗しました"}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** 全文差し替え→フル分析（一覧の断片情報を詳細ページの全文に置き換える） */
+  async function upgradeWithFullText() {
+    if (!guardProposalOverwrite()) return;
+    setBusy(true);
+    showNotice("全文を保存して再分析中…（10〜30秒）");
+    try {
+      const res = await fetch(`/api/jobs/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rawText: fullText }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error(data.error ?? "全文の保存に失敗しました");
+      const re = await fetch(`/api/jobs/${id}`, { method: "POST" });
+      const reData = await safeJson(re);
+      if (!re.ok) throw new Error(reData.error ?? "再分析に失敗しました");
+      setFullText("");
+      await load();
+      showNotice("全文ベースで分析し直しました");
+    } catch (e) {
+      showNotice(`⚠ ${e instanceof Error ? e.message : "失敗しました"}`);
     } finally {
       setBusy(false);
     }
@@ -174,8 +221,12 @@ export default function JobDetail({ id }: { id: string }) {
                 );
               return null;
             })()}
-            <button className="af-btn-primary" disabled={busy} onClick={reanalyze}>
-              {a ? "再分析" : "フル分析する"}
+            <button
+              className={confirmRe ? "af-btn-primary bg-red-600" : "af-btn-primary"}
+              disabled={busy}
+              onClick={reanalyze}
+            >
+              {confirmRe ? "上書きして再分析" : a ? "再分析" : "フル分析する"}
             </button>
           </div>
         </div>
@@ -220,6 +271,29 @@ export default function JobDetail({ id }: { id: string }) {
             </ul>
           </div>
         )}
+      </section>
+
+      {/* 全文で精査し直す（一覧の断片→詳細ページの全文） */}
+      <section className="af-card p-5 space-y-2">
+        <h2 className="text-sm font-bold">全文で精査し直す</h2>
+        <p className="text-xs text-neutral-500">
+          一覧ページからの取り込みは断片情報です。プラットフォームで案件詳細ページを開き、
+          本文をコピーしてここに貼ると、全文ベースで分析し直します（「要確認」が大きく減ります）。
+        </p>
+        <textarea
+          className="af-input min-h-28 text-xs"
+          placeholder="案件詳細ページの全文を貼り付け（Ctrl/Cmd+Aで全選択→コピーでOK）"
+          value={fullText}
+          onChange={(e) => setFullText(e.target.value)}
+          maxLength={40000}
+        />
+        <button
+          className={confirmRe ? "af-btn-primary bg-red-600" : "af-btn-primary"}
+          disabled={busy || fullText.trim().length < 30}
+          onClick={upgradeWithFullText}
+        >
+          {confirmRe ? "上書きして分析し直す" : "全文を保存して分析し直す"}
+        </button>
       </section>
 
       {a && (
