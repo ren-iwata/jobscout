@@ -1,0 +1,50 @@
+Detected Next.js version: 15.5.20
+Running "npm run build"
+> jobscout@0.1.0 build
+> next build
+▲ Next.js 15.5.20
+Creating an optimized production build ...
+✓ Compiled successfully in 3.4s
+Linting and checking validity of types ...
+Collecting page data ...
+Generating static pages (0/14) ...
+Generating static pages (3/14)
+Generating static pages (6/14)
+Generating static pages (10/14)
+✓ Generating static pages (14/14)
+Finalizing page optimization ...
+Collecting build traces ...
+Route (app)                                 Size  First Load JS
+┌ ƒ /                                    3.48 kB         109 kB
+├ ○ /_not-found                            994 B         103 kB
+├ ƒ /api/admin/login                       149 B         103 kB
+├ ƒ /api/admin/logout                      149 B         103 kB
+├ ƒ /api/health                            149 B         103 kB
+├ ƒ /api/jobs                              149 B         103 kB
+├ ƒ /api/jobs/[id]                         149 B         103 kB
+├ ƒ /api/jobs/[id]/reply                   149 B         103 kB
+├ ƒ /api/jobs/bulk                         149 B         103 kB
+├ ƒ /api/jobs/delete                       149 B         103 kB
+├ ƒ /api/profile                           149 B         103 kB
+├ ƒ /api/registry                          149 B         103 kB
+├ ƒ /api/tasks                             149 B         103 kB
+├ ƒ /jobs/[id]                           6.12 kB         109 kB
+├ ○ /login                                 905 B         103 kB
+├ ƒ /new                                 2.57 kB         105 kB
+└ ƒ /profile                             1.68 kB         104 kB
++ First Load JS shared by all             102 kB
+├ chunks/255-3981a3d1f3561bd8.js       46.2 kB
+├ chunks/4bd1b696-c023c6e3521b1417.js  54.2 kB
+└ other shared chunks (total)          1.92 kB
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+Traced Next.js server files in: 84.861ms
+Created all serverless functions in: 273.391ms
+Collected static files (public/, static/, .next/static): 6.564ms
+Build Completed in /vercel/output [23s]
+Deploying outputs...
+[2K[1A[2K[G  Production      https://jobscout-alb2n4f2n-hideyoshis-projects-07b55837.vercel.app
+Completing…
+▲ Aliased         https://jobscout-nine.vercel.app
+
+✓ Ready in 42s

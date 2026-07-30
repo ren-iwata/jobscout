@@ -1,0 +1,11 @@
+  ok: health 200
+  ok: health ok
+  ok: storage is pg
+  ok: db roundtrip ok
+  ok: not mock mode
+  ok: root 200
+  ok: login gate renders
+  ok: auth enforced
+  ok: jobs api protected
+
+SMOKE: ALL PASS

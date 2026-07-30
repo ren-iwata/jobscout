@@ -1,0 +1,7 @@
+vercel: team=hideyoshis-projects-07b55837
+vercel: project found
+vercel: git自動ビルド無効化
+vercel: production domain=jobscout-nine.vercel.app
+db: 自プロジェクトの既存DATABASE_URLを再利用
+vercel: env vars upserted
+provision: done
