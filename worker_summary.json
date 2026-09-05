@@ -1,0 +1,29 @@
+{
+  "at": "2026-09-05T16:50:37.130Z",
+  "summary": [
+    {
+      "source": "kick",
+      "ok": false,
+      "error": "Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CekduhjQgVxdZt1TguuPo\"}"
+    },
+    {
+      "source": "always",
+      "kind": "mail_ingest",
+      "ok": true,
+      "result": {
+        "mails": 3,
+        "jobsCreated": 0,
+        "analyzed": 0,
+        "errors": [
+          "Error: 選別に失敗しました: Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic",
+          "Error: 選別に失敗しました: Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic",
+          "Error: 選別に失敗しました: Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic"
+        ],
+        "mailboxes": [
+          "INBOX:3",
+          "jobscout:0"
+        ]
+      }
+    }
+  ]
+}
